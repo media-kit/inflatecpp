@@ -403,6 +403,9 @@ unsigned int Decompressor::Feed(const void* compressed_data,
           check_sum =
               adler32_z(check_sum, out + current_out_offset, block_result);
           break;
+
+        default:
+          break;
       }
     }
 
@@ -440,6 +443,9 @@ unsigned int Decompressor::Feed(const void* compressed_data,
         if (stored_check_sum != check_sum) return -1;
 
         current_compressed_data += 4;
+        break;
+
+      default:
         break;
     }
   }
