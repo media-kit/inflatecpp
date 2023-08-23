@@ -28,6 +28,17 @@ class String {
     return s.rfind(key, 0) == 0;
   }
 
+  static std::string Trim(std::string s) {
+    auto result = std::string{};
+    auto start = s.find_first_not_of(" \t\r\n");
+    auto end = s.find_last_not_of(" \t\r\n");
+    if (start == std::string::npos || end == std::string::npos) {
+      return result;
+    }
+    result = s.substr(start, end - start + 1);
+    return result;
+  }
+
 #if defined(_WIN32)
   static std::string ToString(std::wstring data) {
     if (data.empty()) {

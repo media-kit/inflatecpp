@@ -32,7 +32,7 @@ MediaKit& MediaKit::GetInstance() {
 }
 
 void MediaKit::FindPackages() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  mutex_.lock();
 
   if (find_packages_success_) {
     return;
@@ -136,11 +136,12 @@ void MediaKit::FindPackages() {
     auto current = std::unordered_set<std::string>{};
     auto lines = String::Split(element, "\n");
     for (const auto& line : lines) {
-      if (!line.empty()) {
-        current.emplace(line);
+      auto value = String::Trim(line);
+      if (!value.empty()) {
+        current.emplace(String::Trim(value));
         found = true;
       }
-      if (found && line.empty()) {
+      if (found && value.empty()) {
         break;
       }
     }
@@ -154,28 +155,61 @@ void MediaKit::FindPackages() {
       "media_kit_video",
       "media_kit_native_event_loop",
   };
+
+  auto unsupported = std::unordered_set<std::string>();
+  auto incompatible = std::unordered_set<std::string>();
+
   for (auto& name : names) {
     if (!String::Contains(executable, name)) {
       if (String::Contains(name, "media_kit")) {
         if (!String::StartsWith(name, "media_kit_libs") &&
             !(std::find(supported.begin(), supported.end(), name) != supported.end())) {
-          find_packages_success_ = false;
-          break;
+          unsupported.emplace(name);
         }
       } else if (String::Contains(name, "video") &&
                  String::Contains(name, "player")) {
         if (!String::Contains(name, "video_player") &&
             !String::Contains(name, "-")) {
-          find_packages_success_ = false;
-          break;
+          incompatible.emplace(name);
         }
       }
     }
   }
 
-  if (!find_packages_success_) {
-    exit(0);
+  if (!unsupported.empty() || !incompatible.empty()) {
+    find_packages_success_ = false;
   }
 
+  if (!unsupported.empty()) {
+    std::cout << std::string(80, '-') << "\n"
+              << "media_kit\n"
+              << "  Some packages are outdated.\n"
+              << "  Update all media_kit packages to use following package(s):\n";
+    for (const auto& name : unsupported) {
+      std::cout << "    * " << name << "\n";
+    }
+    std::cout << std::string(80, '-') << "\n";
+    std::cout << std::endl;
+  }
+  if (!incompatible.empty()) {
+    std::cout << std::string(80, '-') << "\n"
+              << "media_kit\n"
+              << "  Following packages(s) are incompatible:\n";
+    for (const auto& name : incompatible) {
+      std::cout << "    * " << name << "\n";
+    }
+    std::cout << std::string(80, '-') << "\n";
+    std::cout << std::endl;
+  }
+
+  mutex_.unlock();
+
+  if (!find_packages_success_) {
+    std::cout << "GitHub  : https://github.com/media-kit/media-kit\n"
+              << "pub.dev : https://pub.dev/packages/media_kit\n"
+              << "Exiting...\n"
+              << std::endl;
+    ::exit(1);
+  }
 #endif
 }
